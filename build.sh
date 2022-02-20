@@ -3,7 +3,7 @@
 # So many projects can be built with such a simple build script...
 
 OBJS=""
-CFLAGS="-O3 -Wall -Wextra -Winline -Wstrict-aliasing -Wstrict-overflow -Wmissing-include-dirs -pedantic-errors -I ./headers"
+CFLAGS="-O0 -Wall -Wextra -Winline -Wstrict-aliasing -Wstrict-overflow -Wmissing-include-dirs -pedantic-errors -I ./headers"
 
 for F in $(find ./ -name "*.c")
 do
