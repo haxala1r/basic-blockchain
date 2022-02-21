@@ -32,14 +32,39 @@ static struct sockaddr_in serve_addr;
  * we want to send transactions etc.
  */
 const char dcon_cmd[] = "DCON"; // Disconnect
-const char addt_cmd[] = "ADDT"; // Add Transaction
-const char gnpa_cmd[] = "GNPA"; // Get new peer address (used to discover peers)
+
+/* Add transaction. This command is used to announce transactions to peers,
+ * who will then hopefully mine for it.
+ */
+const char addt_cmd[] = "ADD-TRANSACTION";
+
+/* Used to discover new peers */
+const char gpcmd[] = "GET-PEER";
+
 const char ping_cmd[] = "PING"; // sort of a greeting. The expected response is PONG
 /* if a peer doesn't say PONG in response to PING, it is assumed to be dead.
  * Processes regularly send PINGs to their peers, and send PONG in response
  * to PING when they get the chance.
  */
 const char pong_cmd[] = "PONG";
+
+/* Get Chain. This command is simply a request to recieve the *entire*
+ * blockchain from a peer.
+ * NOTE: transferring the ENTIRE CHAIN every time
+ * we boot up is probably not the safest or the fastest choice. In fact it's really
+ * unfeasible when the blockchain gets too long. That's probably fine for this
+ * app though.
+ *
+ * A peer that recieves this command is expected to send the RET-CHAIN command,
+ * then immediately send every block in its blockchain, in order, back to back.
+ */
+const char getc_cmd[] = "GET-CHAIN";
+const char retc_cmd[] = "RET-CHAIN";
+
+/* Gets/returns the length of the blockchain the peer is keeping. */
+const char getl_cmd[] = "GET-LENGTH";
+const char retl_cmd[] = "RET-LENGTH";
+
 
 Peer *peer_list;
 int peer_count = 0;
@@ -53,7 +78,6 @@ int send_peer(Peer *p, const char *cmd, int arg) {
 	int len = strlen(cmd) + 1 + 10;
 	char *buf = malloc(len);
 	if (buf == NULL) return -1;
-
 	sprintf(buf, "%s %d", cmd, arg);
 
 	if (strlen(buf) > 63) {
@@ -110,7 +134,6 @@ int unlink_peer(Peer *p) {
 		p->next->prev = p->prev;
 	}
 
-	close(p->sock_fd);
 	free(p);
 	peer_count--;
 	return 0;
@@ -143,9 +166,62 @@ int handle_cmd(Peer *p, char *line) {
 	} else if (!strcmp(cmd, dcon_cmd)) {
 		printf("A peer disconnected.\n");
 		return -1;
+	} else if (!strcmp(cmd, getl_cmd)) {
+		printf("A peer requests us to give them our lengthssssss. %d\n", arg);
+		send_peer(p, retl_cmd, get_chain_len());
+		int cur_len = get_chain_len();
+		if (arg > cur_len) {
+			/* Request the peers blockchain */
+			send_peer(p, getc_cmd, -1);
+		}
+
+	} else if (!strcmp(cmd, retl_cmd)) {
+		printf("A peer has longer chain than us!!!! with a length of %d no less!!!!!!!!\n", arg);
+		if (arg > get_chain_len()) {
+			/* Request the peers blockchain */
+			send_peer(p, getc_cmd, -1);
+		}
+	} else if (!strcmp(cmd, getc_cmd)) {
+		printf("A peer wantsss our chainsss...\n");
+		send_peer(p, retc_cmd, get_chain_len());
+		send_blockchain(p->sock_fd);
+	} else if (!strcmp(cmd, retc_cmd)) {
+		printf("Got a chain from a peer!\n");
+		read_blockchain(p->sock_fd, arg);
 	}
 	return 0;
 }
+
+/* Synchronize the chain with other peers
+ * This function simply checks if any of the peers we're connected to have a
+ * longer chain than ours. We always accept a longer chain as more "secure" and
+ * "legitimate", thus we replace our entire current chain with that of the peer's.
+ */
+int sync_peers(void) {
+	/* Loop over all peers, send them get_length cmds */
+	Peer *p = peer_list;
+	while (p != NULL) {
+		/* Send the peer our own chain length, and ask for theirs. */
+		if (send_peer(p, getl_cmd, get_chain_len())) {
+			disconnect_peer(p);
+			if (p->next == NULL) {
+				unlink_peer(p);
+				break;
+			} else {
+				p = p->next;
+				unlink_peer(p->prev);
+			}
+		}
+		/* We won't handle the peers' responses here, we'll instead do the actual
+		 * chain-syncing in the handle_cmd() routine.
+		 */
+
+		p = p->next;
+	}
+	return 0;
+}
+
+static int cur_tick = 0;
 
 /* Checks if any peers have any requests from us, and if they do, handle them.
  * Returns -1 on a FATAL error. 0 on success.
@@ -161,10 +237,6 @@ int check_network(void) {
 
 	Peer *p = peer_list;
 	for (int i = 0; i < peer_count; i++) {
-		if (p == NULL) {
-			printf("ahem...\n");
-			fflush(stdout);
-		}
 		if (p->active) {
 			FD_SET(p->sock_fd, &rfds);
 			if (p->sock_fd > max_fd) max_fd = p->sock_fd;
@@ -184,10 +256,17 @@ int check_network(void) {
 				fflush(stdout);
 				char *cmd = recv_peer(p);
 				if (cmd == NULL) {
-					printf("A peer closed connection.\n");
+					printf("A peer closed connection with no explanation?\n");
 					fflush(stdout);
 					disconnect_peer(p);
-					return -1;
+					if (p->next == NULL) {
+						unlink_peer(p);
+						break;
+					} else {
+						p = p->next;
+						unlink_peer(p->prev);
+						continue;
+					}
 				}
 
 				if (handle_cmd(p, cmd)) {
@@ -235,6 +314,12 @@ int check_network(void) {
 
 	}
 	FD_ZERO(&rfds);
+
+	if ((cur_tick % 100) == 0) {
+		printf("Performing routine sync.\n");
+		sync_peers();
+	}
+	cur_tick++;
 
 	/* Done. */
 	return 0;

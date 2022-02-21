@@ -45,11 +45,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	srand(time(NULL));
-	BlockChain *bc = malloc(sizeof(*bc));
-	if (bc == NULL) return -1;
-
-	memset(bc, 0, sizeof(*bc));
-	genesis(bc);
 
 	while (1) {
 		check_network();
@@ -84,14 +79,14 @@ int main(int argc, char *argv[]) {
 				printf("Host unavailable.\n");
 			}
 		} else if (!strncmp(line, "add", 3)) {
-			if (create_block(bc, line + 4, strlen(line))) {
+			if (create_block(line + 4, strlen(line))) {
 				printf("error occured? maybe?\n");
 			}
 		} else if (!strcmp(line, "exit")) {
 			free(line);
 			break;
 		} else if (!strcmp(line, "print")) {
-			print_blockchain(bc);
+			print_blockchain();
 		}
 
 		free(line);

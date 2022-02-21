@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include <blockchain.h>
 #include <hash.h>
@@ -12,7 +13,9 @@ static char *genesis_data = "THIS IS THE GENESIS BLOCK.";
 /* This is the proof-of-work zero count. I.e. the amount of bytes at the end
  * of a block's hash that are *required* to be zero.
  */
-static int req_zero_count = 2;
+static int req_zero_count = 4;
+
+static BlockChain *bc = NULL;
 
 void calculate_block_hash(Block *b) {
 	char *h = sha256(&b->block_data, sizeof(BlockData));
@@ -26,6 +29,13 @@ void calculate_block_hash(Block *b) {
  */
 int check_block_hash(Block *b) {
 	if (b == NULL) return -1;
+
+	if (b->prev != NULL) {
+		if (memcmp(b->prev->hash, b->block_data.prev_hash, 32)) {
+			return 0;
+		}
+	}
+
 	int valid = 1;
 	for (int i = 31; i > (31 - req_zero_count); i--) {
 		if (b->hash[i] != '\0') {
@@ -58,7 +68,7 @@ void generate_nonce(Block *b) {
 	return;
 }
 
-int push_block(BlockChain *bc, Block *b) {
+int push_block(Block *b) {
 	if ((bc == NULL) || (b == NULL)) return -1;
 
 	/* Check for proof-of-work */
@@ -82,8 +92,11 @@ int push_block(BlockChain *bc, Block *b) {
 }
 
 /* Mines for a block that was created locally  */
-int create_block(BlockChain *bc, char *data, int data_len) {
+int create_block(char *data, int data_len) {
 	if (data_len > 256) return -1;
+	if (bc == NULL) {
+		genesis();
+	}
 
 	Block *nb = malloc(sizeof(*nb));
 	if (nb == NULL) return -1;
@@ -109,19 +122,73 @@ int create_block(BlockChain *bc, char *data, int data_len) {
 	/* Call generate_nonce, which "mines" for a good nonce */
 	generate_nonce(nb);
 
-	if (push_block(bc, nb)) {
+	if (push_block(nb)) {
 		return -1;
 	}
 	return 0;
 }
 
-int genesis(BlockChain *bc) {
+/* Creates an entirely new blockchain with a new genesis block */
+int genesis(void) {
+	bc = malloc(sizeof(*bc));
 	if (bc == NULL) return -1;
 
-	return create_block(bc, genesis_data, strlen(genesis_data));
+	memset(bc, 0, sizeof(*bc));
+	return create_block(genesis_data, strlen(genesis_data));
 }
 
-void print_blockchain(BlockChain *bc) {
+int get_chain_len(void) {
+	if (bc == NULL) return 0;
+	return bc->current_length;
+}
+
+/* Sends the entire blockchain over a file descriptor. NOTE: probably needs to
+ * be checked, since endianness can vary over machines.
+ */
+int send_blockchain(int fd) {
+	Block *b = bc->genesis_block;
+
+	while (b != NULL) {
+		if (write(fd, &b->block_data, sizeof(BlockData)) < 0) {
+			return -1;
+		}
+
+		b = b->next;
+	}
+	return 0;
+}
+
+/* Reads the entire blockchain over a file descriptor. NOTE length to read
+ * must be supplied.
+ */
+int read_blockchain(int fd, int len) {
+	if (bc != NULL) {
+		Block *b = bc->genesis_block;
+		while (b != NULL) {
+			free(b);
+			b = b->next;
+		}
+	} else {
+		bc = malloc(sizeof(*bc));
+	}
+	memset(bc, 0, sizeof(*bc));
+	for (int i = 0; i < len; i++) {
+		Block *b = malloc(sizeof(*b));
+		memset(b, 0, sizeof(*b));
+		if (read(fd, &b->block_data, sizeof(b->block_data)) < 0) {
+			free(b);
+			return -1;
+		}
+
+		if (push_block(b)) {
+			free(b);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+void print_blockchain(void) {
 	if (bc == NULL) return;
 
 	Block *i = bc->genesis_block;

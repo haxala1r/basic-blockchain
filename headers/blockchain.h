@@ -2,7 +2,7 @@
 #define BLOCKCHAIN_H 1
 
 
-/* This is the *raw* block data. This is the struct we pass 
+/* This is the *raw* block data. This is the struct we pass
  * *directly* into sha256()
  */
 struct BlockData {
@@ -10,7 +10,7 @@ struct BlockData {
 	char nonce[32];  /* the stuff miners mine I guess? */
 	int time; /* The time of creation */
 
-	/* Here we store constant-size data. 
+	/* Here we store constant-size data.
 	 * Each block holds exactly one 256-byte string.
 	 */
 	char data[256];
@@ -38,14 +38,18 @@ typedef struct Block Block;
 struct BlockChain {
 	Block *genesis_block;
 	Block *last_block;
-	
+
 	int current_length;
 };
 
 typedef struct BlockChain BlockChain;
 
-int create_block(BlockChain *bc, char *data, int data_len);
-int genesis(BlockChain *bc);
-void print_blockchain(BlockChain *bc);
+
+int send_blockchain(int fd);
+int read_blockchain(int fd, int len);
+int get_chain_len(void);
+int create_block(char *data, int data_len);
+int genesis(void);
+void print_blockchain(void);
 
 #endif
