@@ -4,10 +4,11 @@
 
 OBJS=""
 CFLAGS="-O0 -Wall -Wextra -Winline -Wstrict-aliasing -Wstrict-overflow -Wmissing-include-dirs -pedantic-errors -I ./headers"
+CC="gcc.exe"
 
 for F in $(find ./ -name "*.c")
 do
-	gcc $CFLAGS -c "${F}" -o "${F%.c}.o"
+	$CC $CFLAGS -c "${F}" -o "${F%.c}.o"
 	OBJS="${OBJS} ${F%.c}.o"
 done
 
@@ -15,4 +16,4 @@ done
 # that a compiler is easier to use for linking than... you know... a *linker*.
 # Though I guess it kinda makes sense that a compiler would have more ready access to
 # system-wide configuration and library locations.
-gcc $OBJS -o BlockChain.elf
+$CC $OBJS -o BlockChain.elf

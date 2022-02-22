@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 
 	while (1) {
+		mine();
 		check_network();
 
 		/* Wait up to 25 milliseconds for the user to enter a command.

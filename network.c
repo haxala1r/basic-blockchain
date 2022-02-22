@@ -176,8 +176,8 @@ int handle_cmd(Peer *p, char *line) {
 		}
 
 	} else if (!strcmp(cmd, retl_cmd)) {
-		printf("A peer has longer chain than us!!!! with a length of %d no less!!!!!!!!\n", arg);
 		if (arg > get_chain_len()) {
+			printf("A peer has longer chain than us!!!! with a length of %d no less!!!!!!!!\n", arg);
 			/* Request the peers blockchain */
 			send_peer(p, getc_cmd, -1);
 		}
@@ -188,6 +188,15 @@ int handle_cmd(Peer *p, char *line) {
 	} else if (!strcmp(cmd, retc_cmd)) {
 		printf("Got a chain from a peer!\n");
 		read_blockchain(p->sock_fd, arg);
+	} else if (!strcmp(cmd, addt_cmd)) {
+		printf("Got a new transssssaction from peer.\n");
+		char *data = malloc(256);
+		memset(data, 0, 256);
+		if (read(p->sock_fd, data, 256) < 0) {
+			printf("err?\n");
+		} else {
+			add_data(data, 256);
+		}
 	}
 	return 0;
 }
