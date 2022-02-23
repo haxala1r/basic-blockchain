@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		mine();
 		check_network();
-
+		fflush(stdout);
 		/* Wait up to 25 milliseconds for the user to enter a command.
 		 * If the user hasn't entered a command, keep looping.
 		 */
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 				printf("Host unavailable.\n");
 			}
 		} else if (!strncmp(line, "add", 3)) {
-			if (create_block(line + 4, strlen(line))) {
+			if (add_transaction(line + 4, strlen(line + 4))) {
 				printf("error occured? maybe?\n");
 			}
 		} else if (!strcmp(line, "exit")) {

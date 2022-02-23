@@ -7,6 +7,7 @@
 
 #include <blockchain.h>
 #include <hash.h>
+#include <network.h>
 
 static char *genesis_data = "THIS IS THE GENESIS BLOCK.";
 
@@ -16,7 +17,7 @@ static char *genesis_data = "THIS IS THE GENESIS BLOCK.";
 static int req_zero_count = 3;
 
 /* Global constant that determines the amount of times we actually */
-static int max_mine_attempts = 10000;
+static int max_mine_attempts = 100000;
 
 static DataList *data_list = NULL;
 
@@ -51,6 +52,28 @@ int check_block_hash(Block *b) {
 	return valid;
 }
 
+/* Returns 1 if chain is valid, 0 otherwise */
+int check_blockchain(void) {
+	if (bc == NULL) return 0;
+
+	int i = 0;
+	Block *b = bc->genesis_block;
+	while (b != NULL) {
+		if (check_block_hash(b) != 1) {
+			return 0;
+		}
+
+		i++;
+		b = b->next;
+	}
+
+	if (i != bc->current_length) {
+		return 0;
+	}
+
+	return 1;
+}
+
 /* Generates a nonce that, when put into block and hashed, will produce a valid
  * block.
  */
@@ -62,7 +85,7 @@ int generate_nonce(Block *b) {
 	 */
 	for (int i = 0; (i < max_mine_attempts) || (max_mine_attempts == 0); i++) {
 		/* Randomly generate a 32-byte buffer */
-		for (int j = 0; i < 32; i++) {
+		for (int j = 0; j < 32; j++) {
 			buf[j] = rand() & 0xFF;
 		}
 		memcpy(b->block_data.nonce, buf, 32);
@@ -85,6 +108,34 @@ int push_block(Block *b) {
 		return -1;
 	}
 
+	/* If a block is being pushed and an exact copy of its data is in the
+	 * data list, remove it.
+	 */
+	DataList *dl = data_list;
+	while (dl != NULL) {
+		if (dl == data_list) {
+
+			if (!memcmp(dl->data, b->block_data.data, 256)) {
+				printf("rm1 %s %s\n", dl->data, b->block_data.data);
+				data_list = dl->next;
+				free(dl);
+				break;
+			}
+		}
+		if (dl->next != NULL) {
+
+			if (!memcmp(dl->next->data, b->block_data.data, 256)) {
+				printf("rm2 %s\n", dl->next->data);
+				DataList *dl2 = dl->next;
+				dl->next = dl->next->next;
+				free(dl2);
+				break;
+			}
+		}
+
+		dl = dl->next;
+	}
+
 	/* The block seems valid, add the block to the end of the linked list  */
 	b->next = NULL;
 	b->prev = bc->last_block;
@@ -95,6 +146,8 @@ int push_block(Block *b) {
 	}
 	bc->last_block = b;
 
+	bc->current_length++;
+
 	return 0;
 }
 
@@ -102,9 +155,10 @@ int push_block(Block *b) {
 int create_block(char *data, int data_len) {
 	if (data_len > 256) return -1;
 	if (bc == NULL) {
-		if (genesis()) {
-			return -1;
-		}
+		bc = malloc(sizeof(*bc));
+		if (bc == NULL) return -1;
+
+		memset(bc, 0, sizeof(*bc));
 	}
 
 	Block *nb = malloc(sizeof(*nb));
@@ -150,21 +204,27 @@ int create_block(char *data, int data_len) {
 /* Mines for the next data on the queue */
 int mine(void) {
 	if (data_list == NULL) return -1;
-	
-	if (create_block(data_list->data, 256)) {
-		return -1;
+
+	if ((bc == NULL) || (bc->genesis_block == NULL)) {
+		if (create_block(genesis_data, strlen(genesis_data))) {
+			return -1;
+		}
+	} else {
+		if (create_block(data_list->data, 256)) {
+			return -1;
+		}
 	}
-	
-	DataList *o = data_list;
-	data_list = o->next;
-	
-	free(o);
+
+	/* communicate with the peers to tell them of our new-found block.
+	 * This function automatically announces the last block of the chain.
+	 */
+	announce_block(bc);
 	return 0;
 }
 
 int add_data(char *data, int data_len) {
 	if (data == NULL) return -1;
-	
+
 	DataList *nd = malloc(sizeof(*nd));
 	memset(nd, 0, sizeof(*nd));
 	memcpy(nd->data, data, data_len);
@@ -172,22 +232,13 @@ int add_data(char *data, int data_len) {
 		data_list = nd;
 		return 0;
 	}
-	
+
 	DataList *i = data_list;
 	while (i->next != NULL) {
 		i = i->next;
 	}
 	i->next = nd;
 	return 0;
-}
-
-/* Creates an entirely new blockchain with a new genesis block */
-int genesis(void) {
-	bc = malloc(sizeof(*bc));
-	if (bc == NULL) return -1;
-
-	memset(bc, 0, sizeof(*bc));
-	return create_block(genesis_data, strlen(genesis_data));
 }
 
 int get_chain_len(void) {

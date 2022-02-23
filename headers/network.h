@@ -2,6 +2,7 @@
 #define NETWORK_H 1
 
 #include <netinet/in.h>
+#include <blockchain.h>
 
 struct Peer {
 	/* is the connection active? 1 if yes */
@@ -20,6 +21,8 @@ struct Peer {
 
 typedef struct Peer Peer;
 
+int announce_block(BlockChain *bc);
+int add_transaction(char *data, int data_len);
 int disconnect_peer(Peer *p);
 int add_peer(char *IP, int port);
 int check_network(void);

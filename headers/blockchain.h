@@ -1,7 +1,7 @@
 #ifndef BLOCKCHAIN_H
 #define BLOCKCHAIN_H 1
 
-/* A linked list of 256 bytes long data. 
+/* A linked list of 256 bytes long data.
    This is useful for keeping track of all the
    data that is yet to be mined into the Blockchain
    */
@@ -55,6 +55,7 @@ struct BlockChain {
 
 typedef struct BlockChain BlockChain;
 
+int push_block(Block *b);
 int mine(void);
 int add_data(char *data, int data_len);
 int send_blockchain(int fd);

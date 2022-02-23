@@ -65,6 +65,14 @@ const char retc_cmd[] = "RET-CHAIN";
 const char getl_cmd[] = "GET-LENGTH";
 const char retl_cmd[] = "RET-LENGTH";
 
+/* The argument is the index of the block. If the index isn't at the end,
+ * a peer ignores the command. This command slightly helps us mitigate a
+ * problem that can occur when two peers find a block before either of them
+ * has a routine sync. This allows peers to announce that they have successfully
+ * mined a new block.
+ */
+const char addb_cmd[] = "NEW-BLOCK";
+
 
 Peer *peer_list;
 int peer_count = 0;
@@ -115,7 +123,9 @@ char *recv_peer(Peer *p) {
 			return NULL;
 		}
 	}
-
+	if (!strcmp(buf, "")) {
+		return NULL;
+	}
 	char *s = malloc(64);
 	memcpy(s, buf, 64);
 	return s;
@@ -164,40 +174,110 @@ int handle_cmd(Peer *p, char *line) {
 		/* resPONG to the ping. No, I am not sorry. */
 		send_peer(p, pong_cmd, -1);
 	} else if (!strcmp(cmd, dcon_cmd)) {
+		/* Peer wants to disconnect */
 		printf("A peer disconnected.\n");
 		return -1;
 	} else if (!strcmp(cmd, getl_cmd)) {
+		/* Peer tells us the length of their chain, and wants ours. */
 		printf("A peer requests us to give them our lengthssssss. %d\n", arg);
 		send_peer(p, retl_cmd, get_chain_len());
 		int cur_len = get_chain_len();
 		if (arg > cur_len) {
-			/* Request the peers blockchain */
+			/* Request the peers blockchain if theirs is longer than ours */
 			send_peer(p, getc_cmd, -1);
 		}
-
 	} else if (!strcmp(cmd, retl_cmd)) {
+		/* Peer has returned their length */
 		if (arg > get_chain_len()) {
-			printf("A peer has longer chain than us!!!! with a length of %d no less!!!!!!!!\n", arg);
-			/* Request the peers blockchain */
+			/* Request the peers blockchain if theirs is longer than ours */
 			send_peer(p, getc_cmd, -1);
 		}
 	} else if (!strcmp(cmd, getc_cmd)) {
-		printf("A peer wantsss our chainsss...\n");
+		/* Peer wants us to give them the entire chain as we know it.  */
+		printf("A peer wants to synchronise chains with us\n");
 		send_peer(p, retc_cmd, get_chain_len());
 		send_blockchain(p->sock_fd);
 	} else if (!strcmp(cmd, retc_cmd)) {
-		printf("Got a chain from a peer!\n");
+		/* Peer has returned their entire chain as data after the command */
+		printf("Synchronised chain with peer\n");
 		read_blockchain(p->sock_fd, arg);
 	} else if (!strcmp(cmd, addt_cmd)) {
-		printf("Got a new transssssaction from peer.\n");
+		/* The peer wants to announce a new transaction */
+		printf("Added new transaction to list.\n");
 		char *data = malloc(256);
 		memset(data, 0, 256);
 		if (read(p->sock_fd, data, 256) < 0) {
-			printf("err?\n");
+			disconnect_peer(p);
+			unlink_peer(p);
 		} else {
-			add_data(data, 256);
+			add_data(data, arg);
 		}
+		free(data);
+	} else if (!strcmp(cmd, addb_cmd)) {
+		/* The peer has successfully mined a block, and wants to announce it */
+		Block *b = malloc(sizeof(*b));
+		if (b == NULL) return -1;
+		memset(b, 0, sizeof(*b));
+
+		if (recv(p->sock_fd, &b->block_data, sizeof(BlockData), 0) <= 0) {
+			return -1;
+		}
+		if (arg != (get_chain_len() - 1)) {
+			free(b);
+			return 0; /* Ignore the command.  TODO: this may not be desirable. */
+		}
+		if (push_block(b)) {
+			free(b);
+			return -1;
+		}
+		printf("Recieved a new block from a peer!\n");
 	}
+	return 0;
+}
+
+int add_transaction(char *data, int data_len) {
+	/* Pad the data to 256 bytes */
+	char *buf = malloc(256);
+	memset(buf, 0, 256);
+	memcpy(buf, data, data_len);
+
+	Peer *p = peer_list;
+
+	while (p != NULL) {
+		send_peer(p, addt_cmd, 256);
+		send(p->sock_fd, buf, 256, 0);
+
+		p = p->next;
+	}
+	add_data(buf, 256);
+	free(buf);
+	return 0;
+}
+
+int announce_block(BlockChain *bc) {
+	if (bc == NULL) return -1;
+	Block *b = bc->last_block;
+	if (b == NULL) return -1;
+
+	int off = bc->current_length - 1;
+	Peer *p = peer_list;
+	while (p != NULL) {
+		if (p->active == 0) {
+			p = p->next;
+			continue;
+		}
+		if (send_peer(p, addb_cmd, off)) {
+			// handle this maybe?
+		}
+
+		if (send(p->sock_fd, &b->block_data, sizeof(BlockData), MSG_NOSIGNAL) <= 0) {
+			// also.
+		}
+
+		p = p->next;
+	}
+	printf("Announced block\n");
+
 	return 0;
 }
 
@@ -262,10 +342,9 @@ int check_network(void) {
 		Peer *p = peer_list;
 		for (int i = 0; i < peer_count; i++) {
 			if (FD_ISSET(p->sock_fd, &rfds)) {
-				fflush(stdout);
 				char *cmd = recv_peer(p);
 				if (cmd == NULL) {
-					printf("A peer closed connection with no explanation?\n");
+					printf("A peer closed connection with no explanation.\n");
 					fflush(stdout);
 					disconnect_peer(p);
 					if (p->next == NULL) {
@@ -280,7 +359,6 @@ int check_network(void) {
 
 				if (handle_cmd(p, cmd)) {
 					free(cmd);
-					printf("A peer disconnected.\n");
 					fflush(stdout);
 					if (p->next == NULL) {
 						unlink_peer(p);
