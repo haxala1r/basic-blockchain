@@ -222,7 +222,7 @@ int handle_cmd(Peer *p, char *line) {
 		if (recv(p->sock_fd, &b->block_data, sizeof(BlockData), 0) <= 0) {
 			return -1;
 		}
-		if (arg != (get_chain_len() - 1)) {
+		if (arg != (get_chain_len())) {
 			free(b);
 			return 0; /* Ignore the command.  TODO: this may not be desirable. */
 		}
