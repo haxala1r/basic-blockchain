@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 25000;
+		tv.tv_usec = 1000;
 		if (select(1, &fds, NULL, NULL, &tv) <= 0) {
 			continue;
 		}

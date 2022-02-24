@@ -14,10 +14,10 @@ static char *genesis_data = "THIS IS THE GENESIS BLOCK.";
 /* This is the proof-of-work zero count. I.e. the amount of bytes at the end
  * of a block's hash that are *required* to be zero.
  */
-static int req_zero_count = 3;
+static int req_zero_count = 2;
 
 /* Global constant that determines the amount of times we actually */
-static int max_mine_attempts = 100000;
+static int max_mine_attempts = 10000;
 
 static DataList *data_list = NULL;
 
@@ -48,6 +48,12 @@ int check_block_hash(Block *b) {
 			valid = 0;
 			break;
 		}
+	}
+	/* making the required zero count 2 makes it too easy, 3 makes it take too long.
+	   To circumvent this, we check half of another byte.
+	 */
+	if (b->hash[31 - req_zero_count] & 0x0F) {
+		valid = 0;
 	}
 	return valid;
 }
@@ -102,6 +108,7 @@ int push_block(Block *b) {
 	if ((bc == NULL) || (b == NULL)) return -1;
 
 	/* Check for proof-of-work */
+	b->prev = bc->last_block;
 	calculate_block_hash(b);
 	if (!check_block_hash(b)) {
 		/* Return Error if the block isn't valid. */
@@ -116,7 +123,6 @@ int push_block(Block *b) {
 		if (dl == data_list) {
 
 			if (!memcmp(dl->data, b->block_data.data, 256)) {
-				printf("rm1 %s %s\n", dl->data, b->block_data.data);
 				data_list = dl->next;
 				free(dl);
 				break;
@@ -125,7 +131,6 @@ int push_block(Block *b) {
 		if (dl->next != NULL) {
 
 			if (!memcmp(dl->next->data, b->block_data.data, 256)) {
-				printf("rm2 %s\n", dl->next->data);
 				DataList *dl2 = dl->next;
 				dl->next = dl->next->next;
 				free(dl2);

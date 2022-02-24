@@ -164,9 +164,11 @@ int link_peer(Peer *p) {
 int handle_cmd(Peer *p, char *line) {
 	char cmd[64];
 	int arg;
-	sscanf(line, "%s %d", cmd, &arg);
+	if (sscanf(line, "%s %d", cmd, &arg) < 0) {
+		/* Cannot parse command? */
+		return -1;
+	}
 
-	printf("got cmd '%s'\n", line);
 	fflush(stdout);
 
 	/* Determine command, and handle each of them independantly */
@@ -179,7 +181,6 @@ int handle_cmd(Peer *p, char *line) {
 		return -1;
 	} else if (!strcmp(cmd, getl_cmd)) {
 		/* Peer tells us the length of their chain, and wants ours. */
-		printf("A peer requests us to give them our lengthssssss. %d\n", arg);
 		send_peer(p, retl_cmd, get_chain_len());
 		int cur_len = get_chain_len();
 		if (arg > cur_len) {
@@ -194,12 +195,10 @@ int handle_cmd(Peer *p, char *line) {
 		}
 	} else if (!strcmp(cmd, getc_cmd)) {
 		/* Peer wants us to give them the entire chain as we know it.  */
-		printf("A peer wants to synchronise chains with us\n");
 		send_peer(p, retc_cmd, get_chain_len());
 		send_blockchain(p->sock_fd);
 	} else if (!strcmp(cmd, retc_cmd)) {
 		/* Peer has returned their entire chain as data after the command */
-		printf("Synchronised chain with peer\n");
 		read_blockchain(p->sock_fd, arg);
 	} else if (!strcmp(cmd, addt_cmd)) {
 		/* The peer wants to announce a new transaction */
@@ -276,7 +275,7 @@ int announce_block(BlockChain *bc) {
 
 		p = p->next;
 	}
-	printf("Announced block\n");
+	printf("Announced a new block to known peers\n");
 
 	return 0;
 }
@@ -316,9 +315,12 @@ static int cur_tick = 0;
  * Returns -1 on a FATAL error. 0 on success.
  */
 int check_network(void) {
+	/* We don't spend much time waiting for anything.
+	   The majority of our time is expected to go towards mining after all.
+	 */
 	struct timeval tv;
 	tv.tv_sec = 0;
-	tv.tv_usec = 25000;
+	tv.tv_usec = 1000;
 
 	int max_fd = -1;
 	fd_set rfds;
@@ -402,11 +404,10 @@ int check_network(void) {
 	}
 	FD_ZERO(&rfds);
 
-	if ((cur_tick % 100) == 0) {
+	if ((cur_tick++ % 2000) == 0) {
 		printf("Performing routine sync.\n");
 		sync_peers();
 	}
-	cur_tick++;
 
 	/* Done. */
 	return 0;
@@ -503,7 +504,7 @@ int connect_peer(Peer *p) {
 	/* Set the timeout values of the socket to 500 ms */
 	struct timeval timeout;
 	timeout.tv_sec = 0;
-	timeout.tv_usec = 50000;
+	timeout.tv_usec = 500000;
 	if (setsockopt(p->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval)) < 0) {
 		close(p->sock_fd);
 		return -1;
