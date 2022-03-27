@@ -1,9 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstring>
 #include <stdint.h>
 #include <stddef.h>
-#include <string.h>
-#include <blockchain.h>
 
 
 /* This is a hard-coded table of "round constants"
@@ -155,6 +153,8 @@ static char get_hex_digit(uint8_t num) {
 
 /* Prints a 32-byte hash (the output of sha256)
  * Kinda inefficient but I tried to make it easy to read if nothing else.
+ * I mean... it literally processes 32 bytes, if you need this to be 
+ * optimised you have FAR more serious problems.
  */
 void print_hash(char *hash) {
 	for (int i = 0; i < 32; i++) {
