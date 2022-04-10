@@ -22,49 +22,54 @@ else
 	COMPILER ?= g++
 endif
 
-CPPFLAGS := -O3 -pedantic -Wall -Wextra -Werror
+CPPFLAGS := -O3 -pedantic -Wall -Wextra -Werror -I ./headers -I ./portsock/headers/
 
-main_sources := $(shell find ./* -name "*.cpp")
+main_sources := $(shell ls | grep cpp)
 main_targets := $(patsubst %.cpp,%.o,$(main_sources))
 
 # This project depends on portsock, therefore we need to also build portsock
 # before linking.
 portsock_link := https://github.com/haxala1r/portsock.git
 
-
+# unnecessary, I know.
 ifeq ($(TARGET),WINDOWS)
-	target_file := BlockChain.exe
+	target_file ?= BlockChain.exe
 else
-	target_file := BlockChain.elf
+	target_file ?= BlockChain.elf
 endif
 
 .PHONY: build build-portsock clean
 
 build: $(target_file)
-	@echo $(main_targets)
+	@echo "$(GREEN)Build complete!$(reset_color)"
 
 clean:
 	rm -rf portsock
 	rm -f $(main_targets)
 	rm -f $(target_file)
 
-# Clones and builds portsock
-build-portsock:
+# Clones and builds portsock. Also copies the portsock header to the 
+# right place. TODO: this really shouldn't be called every time.
+# it's usually enough to build just once.
+portsock/libtps.a:
 	@echo "$(GREEN)Building portsock$(reset_color)"
 	rm -rf portsock
 	git clone https://github.com/haxala1r/portsock.git
-	cd portsock; TARGET=WINDOWS make build
+	cd portsock; TARGET=$(TARGET) make build
 	
 # Compile everything, build portsock and link everyhing up.
-$(target_file): build-portsock $(main_targets)
+$(target_file): portsock/libtps.a $(main_targets)
 	@# Use the compiler to link the source files.
-	@# using mingw, windows needs a couple extra libraries linked.
+	@# using mingw, windows needs a couple extra flags.
+	@# namely: "-lws2_32" to link winsock2, and "-mconsole" to use the
+	@# console subsystem.
 ifeq ($(TARGET),WINDOWS)
-	$(COMPILER) $^ portsock/libtps.a -lws2_32 -mconsole -o $@
+	$(COMPILER) $^ portsock/libtps.a -lws2_32 -mconsole -static-libstdc++ -static-libgcc -o $@
 else 
 	$(COMPILER) $^ portsock/libtps.a -o $@
 endif
 
 # Generic rule for compiling cpp files 
 %.o : %.cpp
-	$(COMPILER) $(CPPFLAGS) $^ -o $@
+	@echo "$(CYAN)[BUILD] -> Compiling $^ $(PURPLE)"
+	$(COMPILER) $(CPPFLAGS) -c $^ -o $@

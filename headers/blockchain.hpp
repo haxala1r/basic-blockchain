@@ -8,7 +8,7 @@ class BlockData {
 public:
 	char *data;
 	int len;
-}
+};
 
 class Block {
 private:
@@ -23,7 +23,7 @@ public:
 	char nonce[32];
 	
 	/* if no data is supplied on initialisation, the block waits*/
-	Block() {}
+	Block();
 	
 	Block(char *d, int len);
 	
@@ -47,10 +47,11 @@ private:
 	Block *last_block;
 
 public:
-	vector<BlockData> data_list;
+	std::vector<BlockData> data_list;
 	
 	BlockChain();
 	BlockChain(char *genesis_data, int len);
+	~BlockChain();
 	
 	/* Drops every block in the chain, and creates a genesis block in the
 	 * chain with the data given.
@@ -59,6 +60,9 @@ public:
 	
 	/* Mines for the next dat on data_list. */
 	int Mine(void);
+	
+	/* Adds data to the list of data that will be mined with Mine() */
+	int AddData(char *data, int len);
 	
 	/* Adds the block to the end of the chain after checking if it's 
 	 * valid. NOTE: adding data that is identical to data that's already

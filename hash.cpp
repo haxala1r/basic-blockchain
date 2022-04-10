@@ -2,6 +2,7 @@
 #include <cstring>
 #include <stdint.h>
 #include <stddef.h>
+#include <iostream>
 
 
 /* This is a hard-coded table of "round constants"
@@ -48,7 +49,7 @@ char *sha256(void *data, uint64_t len) {
 	int pad_bytes = 64 - (len + 1 + 8) % 64;
 	int new_len = len + 1 + 8 + pad_bytes;
 
-	char *buf = malloc(new_len);
+	char *buf = (char*)malloc(new_len);
 	memcpy(buf, data, len);
 
 	/* Padding */
@@ -128,7 +129,7 @@ char *sha256(void *data, uint64_t len) {
 	uint32_t h[8] = {
 		h0, h1, h2, h3, h4, h5, h6, h7
 	};
-	char *digest = malloc(32);
+	char *digest = (char*)malloc(32);
 
 	for (int i = 0; i < 8; i++) {
 		for (int j = 3; j >= 0; j--) {
@@ -159,6 +160,6 @@ static char get_hex_digit(uint8_t num) {
 void print_hash(char *hash) {
 	for (int i = 0; i < 32; i++) {
 		uint32_t val = hash[i] & 0xFF;
-		printf("%c%c", get_hex_digit((val / 16) & 0x0F), get_hex_digit(val & 0x0F));
+		std::cout << get_hex_digit((val / 16) & 0x0F) << get_hex_digit(val & 0x0F);
 	}
 }

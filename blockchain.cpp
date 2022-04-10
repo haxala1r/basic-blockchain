@@ -7,6 +7,7 @@
 
 /* Custom headers */
 #include <blockchain.hpp>
+#include <hash.hpp>
 
 using namespace std;
 
@@ -16,7 +17,7 @@ using namespace std;
 static int pow_zeroes = 3;
 
 
-Block::Block() {};
+Block::Block() {}
 
 Block::Block(char *d, int len)  {
 	this->SetData(d, len);
@@ -28,7 +29,7 @@ int Block::SetData(char *d, int len) {
 	
 	memset(data, 0, sizeof(data));
 	memcpy(data, d, len);
-	this->time = time(nullptr);
+	this->time = std::time(NULL);
 	return 0;
 }
 
@@ -37,7 +38,7 @@ int Block::CalculateHash(void) {
 	 * it to sha256()
 	 */
 	int size = sizeof(hash) + sizeof(data) + sizeof(nonce) + sizeof(time);
-	char *tmp = malloc(size);
+	char *tmp = (char*)malloc(size);
 
 	if (prev == nullptr) {
 		memset(tmp, 0, sizeof(hash));
@@ -70,11 +71,22 @@ int Block::CheckHash(void) {
 
 BlockChain::BlockChain() {
 	string genesis_data = "THIS IS THE GENESIS BLOCK.";
-	this->AddData(genesis_data.c_str(), genesis_data.length());
+	this->AddData((char*)genesis_data.c_str(), genesis_data.length());
 }
 
 BlockChain::BlockChain(char *data, int len) {
 	this->AddData(data, len);
+}
+
+BlockChain::~BlockChain() {
+	Block *i = first_block;
+	
+	while (i != nullptr) {
+		Block *n = i->next;
+		delete i;
+		i = n;
+	}
+	data_list.clear();
 }
 
 int BlockChain::AddData(char *data, int len) {
@@ -82,6 +94,7 @@ int BlockChain::AddData(char *data, int len) {
 	bd.data = data;
 	bd.len = len;
 	data_list.push_back(bd);
+	return 0;
 }
 
 int BlockChain::AddBlock(Block *b) {
@@ -102,24 +115,33 @@ int BlockChain::AddBlock(Block *b) {
 	return 0;
 }
 
-int mine_attempts = 10000;
+/* The Mine() function will be called by main() in a loop with everything
+ * else. Every time Mine() is called, it makes at most this many attempts
+ * before giving up.
+ */
+static int mine_attempts = 100000;
 
 int BlockChain::Mine(void) {
+	if (data_list.size() == 0)
+		return 0;
 	srand(time(NULL));
 	Block *b = new Block(data_list[0].data, data_list[0].len);
 	char n[32];
 	for (int i = 0; i < mine_attempts; i++) {
-		/* Generate a random nonce*/
+		/* Generate a random nonce */
 		for (int j = 0; j < 32; j++) {
 			n[j] = rand() % 0x100;
 		}
 		memcpy(b->nonce, n, 32);
 		
+		/* Test the generated nonce */
 		if (AddBlock(b) == 0) {
+			/* valid */
 			data_list.erase(data_list.begin());
 			return 1;
 		}
 	}
+	delete b;
 	return 0;
 }
 
