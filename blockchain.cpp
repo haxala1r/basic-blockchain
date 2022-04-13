@@ -14,7 +14,7 @@ using namespace std;
 /* Amount of zeroes reqired at the beginning of a hash before it's considered
  * valid.
  */
-static int pow_zeroes = 3;
+static int pow_zeroes = 2;
 
 
 Block::Block() {}
@@ -112,6 +112,7 @@ int BlockChain::AddBlock(Block *b) {
 		last_block = b;
 	}
 	b->next = nullptr;
+	len++;
 	return 0;
 }
 

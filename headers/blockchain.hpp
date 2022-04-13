@@ -47,6 +47,7 @@ private:
 	Block *last_block;
 
 public:
+	int len;
 	std::vector<BlockData> data_list;
 	
 	BlockChain();

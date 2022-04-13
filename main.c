@@ -13,7 +13,7 @@
 #include <network.h>
 
 
-/* Reads a line of at most max characters */
+/* Reads a line */
 char *read_line(void) {
 	char *buf = NULL;
 	int cur_len = 0;

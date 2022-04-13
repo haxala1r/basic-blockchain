@@ -22,6 +22,7 @@ public:
 };
 
 int handle_network(void);
+int add_peer(std::string IP, int port);
 int init_network(std::string IP, int port);
 int network_cleanup(void);
 

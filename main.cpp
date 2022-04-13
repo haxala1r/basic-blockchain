@@ -1,5 +1,6 @@
 /* Standard libraries */
 #include <iostream>
+#include <string>
 
 /* Custem headers. 
  * NOTE: socket.h is copied over from the portsock repo
@@ -20,11 +21,29 @@ BlockChain *bc;
 static int handle_cmd(string cmd) {
 	if (!cmd.compare(0, 4, "exit")) {
 		return 1;
-	} else if (!cmd.compare(0, 3, "add")) {
+	} else if (!cmd.compare(0, 4, "add ")) {
 		if (cmd.length() < 5) return 0; 
 		string data = cmd.substr(4);
 		bc->AddData((char*)data.c_str(), data.length());
 		cout << "Adding data '" << data << "' to the blockchain" << endl; 
+	} else if (!cmd.compare(0, 9, "add-peer ")) {
+		if (cmd.length() < 10) return 0;
+		/* Divide the IP and port */
+		string data = cmd.substr(9);
+		string port = "";
+		for (unsigned int i = 0; i < data.length(); i++) {
+			if (data[i] == ' ') {
+				/* Split here and hope the rest of the string's an integer */
+				port = data.substr(i + 1);
+				data = data.substr(0, i);
+			}
+		}
+		
+		if (add_peer(data, stoi(port))) {
+			cout << "Failed to connect to the host" << endl;
+		} else {
+			cout << "Successfully added peer" << endl;
+		}
 	}
 	return 0;
 }
