@@ -275,9 +275,7 @@ int handle_network(void) {
 		/* Add new peer based on the incoming connection */
 		Peer *np = new Peer(ns);
 		peer_list.push_back(np);
-		if (ns->SendStr("PING") <= 0) {
-			cout << "thfuck2" << endl;
-		}
+		ns->SendStr("PING");
 		cout << "Got a connection? " << endl;
 		/* Keep accepting until there's no more incoming connections */
 		ns = listen_sock->Accept();
