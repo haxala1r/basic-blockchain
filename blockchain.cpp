@@ -70,11 +70,15 @@ int Block::CheckHash(void) {
 
 
 BlockChain::BlockChain() {
+	first_block = nullptr;
+	last_block = nullptr;
 	string genesis_data = "THIS IS THE GENESIS BLOCK.";
 	this->AddData((char*)genesis_data.c_str(), genesis_data.length());
 }
 
 BlockChain::BlockChain(char *data, int len) {
+	first_block = nullptr;
+	last_block = nullptr;
 	this->AddData(data, len);
 }
 

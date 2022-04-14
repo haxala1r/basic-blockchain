@@ -15,7 +15,7 @@ public:
 	int last_touch;
 	
 	/* was the peer active last time we attempted to interact with them? */
-	int active;
+	int status;
 	
 	Peer(Socket *s);
 	~Peer();

@@ -84,7 +84,9 @@ int main(void) {
 		/* Once we're sure there's no input from user, we can go
 		 * check if any peers want stuff from us.
 		 */
-		 handle_network();
+		 if (handle_network()) {
+			 break;
+		 }
 		 
 		 /* Spend some time mining. */
 		 if (bc->Mine()) {

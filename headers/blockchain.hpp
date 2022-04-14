@@ -11,14 +11,13 @@ public:
 };
 
 class Block {
-private:
+public:
 	/* hash is the result of all of these and the hash of the previous 
 	 * block being hashed together.
 	 */
 	char data[256];
 	int64_t time;
 
-public:
 	char hash[32];
 	char nonce[32];
 	
@@ -42,11 +41,10 @@ public:
 };
 
 class BlockChain {
-private:
+public:
 	Block *first_block;
 	Block *last_block;
 
-public:
 	int len;
 	std::vector<BlockData> data_list;
 	
