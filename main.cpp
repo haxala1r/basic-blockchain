@@ -44,6 +44,18 @@ static int handle_cmd(string cmd) {
 		} else {
 			cout << "Successfully added peer" << endl;
 		}
+	} else if (!cmd.compare(0, 5, "print")) {
+		Block *i = bc->first_block;
+		while (i != nullptr) {
+			cout << "|\n|\n|\nv\n";
+			cout << "++====================" << endl;
+			cout << "|| Data  : " << i->data << endl;
+			cout << "|| Time  : " << i->time << endl;
+			cout << "|| Nonce : "; print_hash(i->nonce); cout << endl;
+			cout << "|| Hash  : "; print_hash(i->hash); cout << endl;
+			cout << "++====================" << endl;
+			i = i->next;
+		}
 	}
 	return 0;
 }

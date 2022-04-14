@@ -6,7 +6,7 @@
 
 class BlockData {
 public:
-	char *data;
+	char data[256];
 	int len;
 };
 

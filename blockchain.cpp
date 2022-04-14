@@ -29,6 +29,7 @@ int Block::SetData(char *d, int len) {
 	
 	memset(data, 0, sizeof(data));
 	memcpy(data, d, len);
+
 	this->time = std::time(NULL);
 	return 0;
 }
@@ -73,6 +74,7 @@ BlockChain::BlockChain() {
 	first_block = nullptr;
 	last_block = nullptr;
 	string genesis_data = "THIS IS THE GENESIS BLOCK.";
+	
 	this->AddData((char*)genesis_data.c_str(), genesis_data.length());
 }
 
@@ -95,7 +97,8 @@ BlockChain::~BlockChain() {
 
 int BlockChain::AddData(char *data, int len) {
 	BlockData bd;
-	bd.data = data;
+	memset(bd.data, 0, 256);
+	memcpy(bd.data, data, len);
 	bd.len = len;
 	data_list.push_back(bd);
 	return 0;
