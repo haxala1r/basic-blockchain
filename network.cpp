@@ -180,6 +180,7 @@ static int cmd_newblock(Peer *p, string s) {
 	
 	/* If the new block is exactly at the end of our chain, recieve it. */
 	if (index == (bc->len)) {
+		cout << "GOT NEWBLOCK" << endl;
 		return recv_block(p, bc);
 	}
 	
@@ -304,6 +305,20 @@ int add_peer(string IP, int port) {
 	Peer *np = new Peer(ns);
 	peer_list.push_back(np);
 	/* The other peer should in theory send a PING to us first. */
+	return 0;
+}
+
+int announce_last_block(void) {
+	string cmd = "NEWBLOCK ";
+	cmd += to_string(bc->len - 1);
+	
+	for (unsigned int i = 0; i < peer_list.size(); i++) {
+		if (peer_list[i]->sock->SendStr(cmd) <= 0)
+			return 1;
+		if (send_block(peer_list[i], bc->last_block))
+			return 1;
+	}
+	
 	return 0;
 }
 

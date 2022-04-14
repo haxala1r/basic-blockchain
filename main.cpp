@@ -91,6 +91,10 @@ int main(void) {
 		 /* Spend some time mining. */
 		 if (bc->Mine()) {
 			 cout << "A new block was successfully mined." << endl;
+			 /* Announce the new block to all peers */
+			 if (announce_last_block()) {
+				 cout << "An error occured while announcing the new block to peers" << endl;
+			 }
 		 }
 	}
 	
