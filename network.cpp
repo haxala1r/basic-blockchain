@@ -336,7 +336,7 @@ int network_sync(void) {
 	 * When a new block is announced among peers that have a common chain,
 	 * NEWBLOCK will ensure that all can share any new blocks.
 	 */
-	string cmd = "GETLEN";
+	string cmd = "GETLEN ";
 	cmd += to_string(bc->len);
 	for (unsigned int i = 0; i < peer_list.size(); i++) {
 		if (peer_list[i]->sock->SendStr(cmd) <= 0) {
