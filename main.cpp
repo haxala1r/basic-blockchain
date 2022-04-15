@@ -72,6 +72,8 @@ int main(void) {
 	
 	bc = new BlockChain();
 	cout << "Bind successful." << endl;
+	
+	int tick = 0;
 	/* main loop */
 	while (1) {
 		/* TODO: find a cross-platform way of doing this. Currently,
@@ -96,18 +98,34 @@ int main(void) {
 		/* Once we're sure there's no input from user, we can go
 		 * check if any peers want stuff from us.
 		 */
-		 if (handle_network()) {
-			 break;
-		 }
+		if (handle_network()) {
+			break;
+		}
 		 
-		 /* Spend some time mining. */
-		 if (bc->Mine()) {
-			 cout << "A new block was successfully mined." << endl;
-			 /* Announce the new block to all peers */
-			 if (announce_last_block()) {
-				 cout << "An error occured while announcing the new block to peers" << endl;
-			 }
-		 }
+		/* We also need to periodically synchronise with other peers in
+		 * case some other peers have longer chains than us.
+		 * BUT we don't need to do this very often, since a peer going
+		 * out-of-sync is kinda rare and only happens once a peer has
+		 * just connected to the network.
+		 */
+		if ((tick % 10000) == 0) {
+			if (network_sync()) {
+				/* Not sure how to deal with this, but we should probably
+				 * at least print an error message.
+				 */
+				cout << "There was an error while attempting routine network sync" << endl;
+			}
+		}
+
+		 
+		/* Spend some time mining. */
+		if (bc->Mine()) {
+			cout << "A new block was successfully mined." << endl;
+			/* Announce the new block to all peers */
+			if (announce_last_block()) {
+				cout << "An error occured while announcing the new block to peers" << endl;
+			}
+		}
 	}
 	
 	/* TODO: maybe save it in a file? */

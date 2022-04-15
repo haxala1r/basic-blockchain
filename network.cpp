@@ -77,6 +77,10 @@ static int cmd_getlen(Peer *p, string s) {
 		 * than ours. if so, request the peer's chain.
 		 */
 		string data = ret.substr(7);
+		int plen = stoi(data);
+		if (plen > bc->len) {
+			p->sock->SendStr("GETCHAIN");
+		}
 	}
 	return 0;
 }
@@ -185,7 +189,8 @@ static int cmd_newblock(Peer *p, string s) {
 	}
 	
 	/* If the new block is way outside of our chain, request the entire
-	 * chain of that */
+	 * chain of the peer that found the new block.
+	 */
 	if (index > (bc->len)) {
 		recv_block(p, nullptr);
 		p->sock->SendStr("GETCHAIN");
@@ -319,6 +324,25 @@ int announce_last_block(void) {
 			return 1;
 	}
 	
+	return 0;
+}
+
+int network_sync(void) {
+	/* Go through all peers and send GETLEN.
+	 * The idea is that the peer will respond with a RETLEN.
+	 * After this exchange, the peer that has the shorter chain will
+	 * request the other's blockchain, and use it as its own. Thus,
+	 * the longest chain is always honoured.
+	 * When a new block is announced among peers that have a common chain,
+	 * NEWBLOCK will ensure that all can share any new blocks.
+	 */
+	string cmd = "GETLEN";
+	cmd += to_string(bc->len);
+	for (unsigned int i = 0; i < peer_list.size(); i++) {
+		if (peer_list[i]->sock->SendStr(cmd) <= 0) {
+			return -1;
+		}
+	}
 	return 0;
 }
 
