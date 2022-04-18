@@ -7,6 +7,7 @@
 
 /* Custom headers */
 #include <blockchain.hpp>
+#include <hash.hpp>
 #include <network.hpp>
 #include <socket.hpp>
 #include <vector>
@@ -76,7 +77,7 @@ static int cmd_getlen(Peer *p, string s) {
 		/* The peer has specified their own length, check if it's higher
 		 * than ours. if so, request the peer's chain.
 		 */
-		string data = ret.substr(7);
+		string data = s.substr(7);
 		int plen = stoi(data);
 		if (plen > bc->len) {
 			p->sock->SendStr("GETCHAIN");
@@ -88,7 +89,6 @@ static int cmd_getlen(Peer *p, string s) {
 static int cmd_retlen(Peer *p, string s) {
 	if (s.length() < 8) return -1;
 	string i = s.substr(7);
-	cout << i; 
 	if (stoi(i) > bc->len) {
 		/* request their chain */ 
 		p->sock->SendStr("GETCHAIN");
@@ -106,6 +106,9 @@ static int send_block(Peer *p, Block *b) {
 static int recv_block(Peer *p, BlockChain *nbc) {
 	if (p == nullptr) return 1;
 	Block *b = new Block();
+	/* This needs a big timeout for some reason. */
+	p->sock->timeout = 1000000;
+	
 	if (p->sock->Recv(b->data, 256) != 256) {
 		delete b;
 		return 1;
@@ -122,6 +125,7 @@ static int recv_block(Peer *p, BlockChain *nbc) {
 		delete b;
 		return 0;
 	}
+	
 	if (nbc->AddBlock(b) != 0) {
 		/* Block is invalid, disconnect from peer. */
 		delete b;
@@ -133,9 +137,9 @@ static int recv_block(Peer *p, BlockChain *nbc) {
 static int cmd_getchain(Peer *p, string s) {
 	if (s != "GETCHAIN") return 1;
 	
-	string ret = "RETCHAIN";
+	string ret = "RETCHAIN ";
 	ret += to_string(bc->len);
-	p->sock->SendStr("RETCHAIN");
+	p->sock->SendStr(ret);
 	
 	Block *i = bc->first_block;
 	
@@ -184,7 +188,6 @@ static int cmd_newblock(Peer *p, string s) {
 	
 	/* If the new block is exactly at the end of our chain, recieve it. */
 	if (index == (bc->len)) {
-		cout << "GOT NEWBLOCK" << endl;
 		return recv_block(p, bc);
 	}
 	
@@ -340,6 +343,7 @@ int network_sync(void) {
 	cmd += to_string(bc->len);
 	for (unsigned int i = 0; i < peer_list.size(); i++) {
 		if (peer_list[i]->sock->SendStr(cmd) <= 0) {
+			cout << "ERROR on " << i << endl;
 			return -1;
 		}
 	}

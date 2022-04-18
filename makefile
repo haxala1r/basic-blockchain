@@ -48,9 +48,7 @@ clean:
 	rm -f $(main_targets)
 	rm -f $(target_file)
 
-# Clones and builds portsock. Also copies the portsock header to the 
-# right place. TODO: this really shouldn't be called every time.
-# it's usually enough to build just once.
+# Clones and builds portsock.
 portsock/libtps.a:
 	@echo "$(GREEN)Building portsock$(reset_color)"
 	rm -rf portsock

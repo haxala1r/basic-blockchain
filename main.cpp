@@ -108,7 +108,7 @@ int main(void) {
 		 * out-of-sync is kinda rare and only happens once a peer has
 		 * just connected to the network.
 		 */
-		if ((tick % 10000) == 0) {
+		if ((tick % 50000) == 0) {
 			if (network_sync()) {
 				/* Not sure how to deal with this, but we should probably
 				 * at least print an error message.
@@ -126,6 +126,7 @@ int main(void) {
 				cout << "An error occured while announcing the new block to peers" << endl;
 			}
 		}
+		tick++;
 	}
 	
 	/* TODO: maybe save it in a file? */
