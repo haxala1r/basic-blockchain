@@ -9,6 +9,7 @@ only really works from the commandline, most data is going to be human-readable 
 The hash algorithm used is SHA-256, implemented by me.
 
 # Building
-If you're on linux or another UNIX-like system, you can simply run the `build.sh` build script.
+If you're on linux or another UNIX-like system, you can simply run `make`
 
-If you're on windows, install cywgin and mingw, and *then* run the build script. It's not very complex anyways.
+If you're on windows, install cywgin and mingw, and *then* run make.
+Kinda annoying, I know, but not much I can do to make it easier.
